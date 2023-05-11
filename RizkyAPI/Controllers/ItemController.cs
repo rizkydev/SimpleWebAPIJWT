@@ -74,9 +74,56 @@ namespace RizkyAPI.Controllers
             return listDat; //Untuk List<ItemEntity>
         }
 
+        [Route("GetByID")] //Untuk ganti nama API
+        [HttpGet]
+        //public async Task<IActionResult> GetAllItems()
+        //public async Task<JsonResult> GetAllItems()
+        //[Authorize(Roles = "admin,user")]
+        public async Task<ItemEntity> GetItemByID(long Id)
+        {
+            _logger.LogInformation("Start Get Items By ID Process");
+            var sConn = _conf.GetConnectionString("DataConn");
+            var sQuery = @"Select Top 1 Id, ItemCode, ItemName, ItemDesc From tblItem Where @Id = Id";
+            //var sQuery = @"Select * from vGetListItems"; // Get from Views
+
+            using var connection = new SqlConnection(sConn);
+            using var command = new SqlCommand(sQuery, connection);
+
+            var ItemDat = new ItemEntity();
+
+            try
+            {
+                await connection.OpenAsync();
+                command.Parameters.AddWithValue("@Id", Id);
+                using var reader = await command.ExecuteReaderAsync();
+                if (reader.HasRows)
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        ItemDat.Id = reader.IsDBNull("Id") ? 0 : reader.GetInt64(reader.GetOrdinal("Id"));
+                        ItemDat.ItemName = reader.IsDBNull("ItemName") ? string.Empty : reader.GetString(reader.GetOrdinal("ItemName"));
+                        ItemDat.ItemCode = reader.IsDBNull("ItemCode") ? string.Empty : reader.GetString(reader.GetOrdinal("ItemCode"));
+                        ItemDat.ItemDesc = reader.IsDBNull("ItemDesc") ? string.Empty : reader.GetString(reader.GetOrdinal("ItemDesc"));
+                    }
+                }
+                //await Task.WhenAll((IEnumerable<Task>)listDat);
+                await reader.CloseAsync();
+                await connection.CloseAsync();
+            }
+            catch
+            {
+                if (connection.State != ConnectionState.Closed)
+                {
+                    await connection.CloseAsync();
+                }
+                ItemDat = new ItemEntity();
+            }
+            return ItemDat; 
+        }
+
 
         [HttpPost]
-        [Authorize(Roles = "admin,user")]
+        //[Authorize(Roles = "admin,user")]
         public async Task<IActionResult> CreateItem(ItemEntity dat)
         {
             var iCode = 0;
